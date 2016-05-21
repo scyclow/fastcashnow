@@ -28,9 +28,11 @@ import { match, RouterContext } from 'react-router';
 // Import required modules
 import routes from '../shared/routes';
 import { fetchComponentData } from './util/fetchData';
-import posts from './routes/post.routes';
-import dummyData from './dummyData';
+import users from './routes/user.routes';
+import { referal } from './routes/query.routes';
 import serverConfig from './config';
+import dummyData from './dummyData';
+import User from './models/user';
 
 // MongoDB Connection
 mongoose.connect(serverConfig.mongoURL, (error) => {
@@ -38,16 +40,15 @@ mongoose.connect(serverConfig.mongoURL, (error) => {
     console.error('Please make sure Mongodb is installed and running!'); // eslint-disable-line no-console
     throw error;
   }
-
-  // feed some dummy data in DB.
-  dummyData();
+  dummyData(User);
 });
 
 // Apply body Parser and server public assets and routes
 app.use(bodyParser.json({ limit: '20mb' }));
 app.use(bodyParser.urlencoded({ limit: '20mb', extended: false }));
 app.use(Express.static(path.resolve(__dirname, '../static')));
-app.use('/api', posts);
+app.use(referal);
+app.use('/api', users);
 
 // Render Initial HTML
 const renderFullPage = (html, initialState) => {
@@ -82,38 +83,43 @@ const renderError = err => {
   return renderFullPage(`Server Error${errTrace}`, {});
 };
 
-// Server Side Rendering based on routes matched by React-router.
 app.use((req, res, next) => {
-  match({ routes, location: req.url }, (err, redirectLocation, renderProps) => {
-    if (err) {
-      return res.status(500).end(renderError(err));
-    }
+  res.send(req.user)
+})
 
-    if (redirectLocation) {
-      return res.redirect(302, redirectLocation.pathname + redirectLocation.search);
-    }
+// Server Side Rendering based on routes matched by React-router.
+// app.use((req, res, next) => {
+  // match({ routes, location: req.url }, (err, redirectLocation, renderProps) => {
+  //   if (err) {
+  //     return res.status(500).end(renderError(err));
+  //   }
 
-    if (!renderProps) {
-      return next();
-    }
+  //   if (redirectLocation) {
+  //     return res.redirect(302, redirectLocation.pathname + redirectLocation.search);
+  //   }
 
-    const initialState = { posts: [], post: {} };
+  //   if (!renderProps) {
+  //     return next();
+  //   }
 
-    const store = configureStore(initialState);
+  //   const initialState = { users: [], user: {} };
 
-    return fetchComponentData(store, renderProps.components, renderProps.params)
-      .then(() => {
-        const initialView = renderToString(
-          <Provider store={store}>
-            <RouterContext {...renderProps} />
-          </Provider>
-        );
-        const finalState = store.getState();
+  //   const store = configureStore(initialState);
 
-        res.status(200).end(renderFullPage(initialView, finalState));
-      });
-  });
-});
+  //   return fetchComponentData(store, renderProps.components, renderProps.params)
+  //     .then(() => {
+  //       const initialView = renderToString(
+  //         <Provider store={store}>
+  //           <RouterContext {...renderProps} />
+  //         </Provider>
+  //       );
+
+  //       const finalState = store.getState();
+
+  //       res.status(200).end(renderFullPage(initialView, finalState));
+  //     });
+  // });
+// });
 
 // start app
 app.listen(serverConfig.port, (error) => {
